@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.stats
 from functools import reduce
 from numpy.linalg import det, pinv, matrix_rank, norm
 
@@ -44,7 +45,7 @@ def unit(ndim, ix, dtype=np.float):
     ret[ix] = 1
     return np.atleast_1d(ret)
 
-def is_probability(pvec, tol=1e-6):
+def is_pvec(pvec, tol=1e-6):
     """Check if a vector represents a probability distribution."""
     vec = np.ravel(pvec)
     return (np.size(vec) == np.size(pvec)) \
@@ -60,14 +61,14 @@ def normalize(array, axis=None):
     else:
         return _normalize(array)
 
+# Matrix properties
 
-def is_matrix(mat):
-    """Test that an array is a matrix."""
-    return mat.ndim == 2
+def is_absorbing(mat):
+    """Check if the transition matrix has absorbing states.
 
-def is_square(mat):
-    """Ensure that an array is a 2-D square matrix."""
-    return (mat.ndim == 2) and (mat.shape[0] == mat.shape[1])
+    A state is absorbing if its only outgoing transition is to itself.
+    """
+    return len(find_terminals(mat)) > 0
 
 def is_diagonal(mat):
     """Check if a matrix is diagonal."""
@@ -77,9 +78,41 @@ def is_diagonal(mat):
         off_diagonals = np.extract(1 - np.eye(len(mat)), mat)
         return np.all(0 == off_diagonals)
 
+def is_ergodic(mat):
+    """Check if the matrix is ergodic (irreducible and aperiodic)."""
+    return not(is_reducible(mat) or is_periodic(mat))
+
+def is_matrix(mat):
+    """Test that an array is a matrix."""
+    return mat.ndim == 2
+
 def is_nonnegative(mat):
     """Check if a matrix is nonnegative."""
     return np.all(mat > 0)
+
+def is_periodic(mat):
+    """Check if the transition matrix is periodic.
+
+    A matrix is periodic if it has a period greater than `2`, that is, if it
+    """
+    return (1 < get_period(mat))
+
+def is_reducible(mat):
+    """Check if the matrix is reducible. That is, if all states are part of the
+    same communicating class (can be reached from each other).
+
+    """
+    #TODO: Find a better method for this
+    P = np.copy(mat)
+    S = np.zeros_like(mat)
+    for i in range(len(mat)):
+        S += P
+        P = np.dot(P, mat)
+    return np.any(np.isclose(0, S))
+
+def is_square(mat):
+    """Ensure that an array is a 2-D square matrix."""
+    return (mat.ndim == 2) and (mat.shape[0] == mat.shape[1])
 
 def is_stochastic(mat, tol=1e-6):
     """Check if a matrix is (right) stochastic."""
@@ -93,34 +126,6 @@ def is_substochastic(mat, tol=1e-6):
     return (mat.ndim == 2) \
     and (mat.shape[0] == mat.shape[1]) \
     and (np.all([row >= 0 for row in mat])) \
-
-def is_absorbing(mat):
-    """Check if the transition matrix has absorbing states."""
-    return len(find_terminals(mat)) > 0
-
-def is_periodic(mat):
-    """Check if the transition matrix is periodic."""
-    return (1 < get_period(mat))
-
-def is_recurrent(mat):
-    """Check if the matrix is recurrent."""
-    # TODO: Could be tighter, see 54-8 in Handbook of Linear Algebra
-    return all(np.all(0 < x) for x in get_all_stationary(mat))
-
-def is_reducible(mat):
-    """Check if the matrix is reducible. """
-    #TODO: Find a better method for this
-    P = np.copy(mat)
-    S = np.zeros_like(mat)
-    for i in range(len(mat)):
-        S += P
-        P = np.dot(P, mat)
-    return np.any(np.isclose(0,S))
-
-def is_ergodic(mat):
-    """Check if the matrix is ergodic (irreducible and aperiodic)."""
-    return not(is_reducible(mat) and is_periodic(mat))
-
 
 ## More general utilities
 
@@ -221,7 +226,7 @@ def random_binary(nrows, ncols, row_sum):
     return ret
 
 
-def transition_matrix(ns, pvar=None):
+def rand_p(ns, pvar=None):
     """ Generate a random ergodic transition matrix with `ns` total states. """
     if pvar is None:
         pvar = scipy.stats.uniform()

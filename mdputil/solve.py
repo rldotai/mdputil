@@ -3,7 +3,7 @@ from functools import reduce
 from numbers import Number
 from numpy.linalg import det, pinv, matrix_rank, norm
 
-from linalg_util import is_diagonal, is_stochastic, is_square, mult
+from .linalg_util import is_diagonal, is_stochastic, is_square, mult
 
 
 # td_key
@@ -21,27 +21,23 @@ from linalg_util import is_diagonal, is_stochastic, is_square, mult
 
 # common
 
-def propagator(A, c=1.0):
-    """ A |--> (I - c*A)
+def propagator(A):
+    """ A |--> (I - A)
 
     NB: Somewhat iffy terminology`
     """
-    assert(isinstance(c, Number))
     assert(is_square(A))
     I = np.eye(len(P))
-    return (I - c*A)
+    return (I - A)
 
 
-def potential(*mats, tol=1e-6):
+def potential(A, tol=1e-6):
     """Compute the potential matrix
     ret = (I - M1*M2*...)^{-1}
     """
-    P = mats[0]
-    I = np.eye(len(P))
-    tmp = np.copy(P)
-    for x in mats[1:]:
-        tmp = np.dot(tmp, x)
-    ret = np.linalg.inv(I - tmp)
+    assert(is_square(A))
+    I = np.eye(len(A))
+    ret = np.linalg.inv(I - A)
     ret[np.abs(ret) < tol] = 0 # zero values within tolerance
     return ret
 
@@ -72,8 +68,9 @@ def warp(P, G, L):
     L : Diagonal matrix, diag([lambda(s_1), ...])
     """
     assert(is_stochastic(P))
-    return np.linalg.inv(I )
-
+    assert(is_diagonal(G))
+    assert(is_diagonal(L))
+    return potential(P @ G @ L)
 
 # TD
 

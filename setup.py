@@ -38,7 +38,7 @@ setup(
                  'mdputil'},
     include_package_data=True,
     install_requires=requirements,
-    license="BSD",
+    license="GPL 3.0",
     zip_safe=False,
     keywords='mdputil',
     classifiers=[
@@ -46,7 +46,7 @@ setup(
         'Intended Audience :: Developers',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
     ],
     test_suite='tests',
     tests_require=test_requirements
